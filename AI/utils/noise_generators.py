@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
 
-def shake_image(image_path, output_path, max_shift=10):
+def shake_image(image_path, max_shift=10):
     # Load the image
     image = cv2.imread(image_path)
     
@@ -15,12 +15,11 @@ def shake_image(image_path, output_path, max_shift=10):
     # Apply the transformation
     shifted_image = cv2.warpAffine(image, M, (image.shape[1], image.shape[0]))
     
-    # Save the augmented image
-    cv2.imwrite(output_path, shifted_image)
+    return shifted_image
 
-# Example usage
-image_path = 'utils/curby.jpg'
-output_path = 'curby2.jpg'
-max_shift = 50
+if __name__ == "__main__":
+    # Example usage
+    image_path = 'utils/curby.jpg'
+    max_shift = 50
 
-shake_image(image_path, output_path, max_shift)
+    shake_image(image_path, max_shift)
