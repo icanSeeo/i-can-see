@@ -89,7 +89,7 @@ class CBAMModule(nn.Module):
         return x_out
 
 class ResNetWithCBAM(nn.Module):
-    def __init__(self, block, layers, num_classes=1000):
+    def __init__(self, block, layers, num_classes=1000, pretrained=True):
         super(ResNetWithCBAM, self).__init__()
         self.in_channels = 64
         self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3, bias=False)
@@ -106,6 +106,10 @@ class ResNetWithCBAM(nn.Module):
         self.cbam2 = CBAMModule(512)
         self.cbam3 = CBAMModule(1024)
         self.cbam4 = CBAMModule(2048)
+        
+    def apply_pretrained(self):
+        pretrained_resnet = resnet50(pretrained=True)
+        self.load_state_dict(pretrained_resnet.state_dict(), strict=False)
 
     def _make_layer(self, block, out_channels, blocks, stride=1):
         downsample = None
@@ -162,91 +166,3 @@ class ResNetWithCBAM(nn.Module):
         x = self.fc(x)
 
         return x, attention_map
-
-def resnet50_cbam(num_classes=1000):
-    return ResNetWithCBAM(Bottleneck, [3, 4, 6, 3], num_classes)
-
-# 이미지를 전처리하는 함수 정의
-def preprocess_image(image_path):
-    preprocess = transforms.Compose([
-        transforms.Resize(256),
-        transforms.CenterCrop(224),
-        transforms.ToTensor(),
-        transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-    ])
-
-    input_image = Image.open(image_path).convert('RGB')
-    input_tensor = preprocess(input_image)
-    input_batch = input_tensor.unsqueeze(0)
-
-    return input_batch
-
-# 클래스 인덱스를 클래스명으로 변환하는 함수 정의
-def load_class_names():
-    with open('imagenet_classes.json') as f:
-        class_names = json.load(f)
-    return class_names
-
-# GPU를 사용할 수 있는 경우 GPU로 모델 및 입력 데이터를 이동하는 함수 정의
-def prepare_model_and_input(model, input_batch):
-    if torch.cuda.is_available():
-        model.to('cuda')
-        input_batch = input_batch.to('cuda')
-    return model, input_batch
-
-# 추론을 수행하는 함수 정의
-def perform_inference(model, input_batch):
-    with torch.no_grad():
-        output, attention_map = model(input_batch)
-    return output, attention_map
-
-# 결과를 해석하는 함수 정의
-def interpret_output(output, class_names):
-    probabilities = torch.nn.functional.softmax(output[0], dim=0)
-    top5_prob, top5_catid = torch.topk(probabilities, 5)
-
-    for i in range(top5_prob.size(0)):
-        print(class_names[top5_catid[i]], top5_prob[i].item())
-
-def overlay_attention_map(original_image, attention_map, output_path, alpha=0.5):
-
-    # Normalize attention map values to range [0, 255]
-    attention_map = (attention_map - attention_map.min()) / (attention_map.max() - attention_map.min()) * 255
-    # attention_map = attention_map.astype(np.uint8)
-
-    # Resize attention map to match the original image size
-    attention_map = cv2.resize(attention_map, (original_image.shape[1], original_image.shape[0]))
-
-    # Apply colormap to attention map for better visualization (optional)
-    attention_colormap = cv2.applyColorMap(attention_map, cv2.COLORMAP_JET)
-
-    # Blend attention map with the original image
-    overlaid_image = cv2.addWeighted(original_image, 1-alpha, attention_colormap, alpha, 0)
-
-    # Save the overlaid image
-    cv2.imwrite(output_path, overlaid_image)
-
-# 이미지 경로 설정
-image_path = 'piano.jpg'
-
-# 이미지 전처리 및 모델 준비
-input_batch = preprocess_image(image_path)
-model = ResNetWithCBAM(Bottleneck, [3, 4, 6, 3], num_classes=1000)
-
-pretrained_resnet = resnet50(pretrained=True)
-model.load_state_dict(pretrained_resnet.state_dict(), strict=False)
-model.eval()
-model, input_batch = prepare_model_and_input(model, input_batch)
-
-# 추론 수행
-output, attention_map = perform_inference(model, input_batch)
-
-# 클래스 인덱스를 클래스명으로 변환
-class_names = load_class_names()
-
-# 결과 해석 및 출력
-interpret_output(output, class_names)
-
-original_image = cv2.imread('piano.jpg')
-print(original_image.shape)
-overlay_attention_map(original_image, attention_map.numpy(), 'output_image.jpg')
