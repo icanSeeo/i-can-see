@@ -18,4 +18,4 @@
 |:---:|:---:|:---:| 
 |강성준| slave, 블록체인 개발자 | wnswns1946@naver.com |   
 |조준영| AI 개발자, 웹디자이너 | joon0zo1022@gmail.com |
-|김동현| slave, 백엔드 개발자 | email |
+|김동현| slave, 백엔드 개발자 | aprkal12@naver.com |
