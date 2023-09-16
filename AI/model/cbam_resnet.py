@@ -107,6 +107,16 @@ class ResNetWithCBAM(nn.Module):
         self.cbam3 = CBAMModule(1024)
         self.cbam4 = CBAMModule(2048)
         
+    def save_weights(self, filepath):
+        torch.save(self.state_dict(), filepath)
+
+    @classmethod
+    def load_weights(cls, filepath, block, layers, num_classes=1000):
+        model = cls(block, layers, num_classes=num_classes, pretrained=False)
+        model.load_state_dict(torch.load(filepath))
+        model.eval()
+        return model
+        
     def apply_pretrained(self):
         pretrained_resnet = resnet50(pretrained=True)
         self.load_state_dict(pretrained_resnet.state_dict(), strict=False)
@@ -132,23 +142,23 @@ class ResNetWithCBAM(nn.Module):
         x = self.relu(x)
         x = self.maxpool(x)
         
-        print('x shape', x.shape)
+        # print('x shape', x.shape)
         
-        print('x layer1 shape', self.layer1(x).shape)
+        # print('x layer1 shape', self.layer1(x).shape)
         x = self.cbam1(self.layer1(x))
-        print('x cbam1 shape', x.shape)
+        # print('x cbam1 shape', x.shape)
         
-        print('x layer2 shape', self.layer2(x).shape)
+        # print('x layer2 shape', self.layer2(x).shape)
         x = self.cbam2(self.layer2(x))
-        print('x cbam2 shape', x.shape)
+        # print('x cbam2 shape', x.shape)
         
-        print('x layer3 shape', self.layer3(x).shape)
+        # print('x layer3 shape', self.layer3(x).shape)
         x = self.cbam3(self.layer3(x))
-        print('x cbam3 shape', x.shape)
+        # print('x cbam3 shape', x.shape)
         
-        print('x layer4 shape', self.layer4(x).shape)
+        # print('x layer4 shape', self.layer4(x).shape)
         x = self.cbam4(self.layer4(x))
-        print('x cbam4 shape', x.shape)
+        # print('x cbam4 shape', x.shape)
         # x = self.layer1(x)
         # x = self.layer2(x)
         # x = self.layer3(x)
