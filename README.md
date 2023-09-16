@@ -1,7 +1,7 @@
 # 🔍 i-can-see
 👁‍🗨 Attention based CNN
 
-## 🥞 Index
+## 📸 Index
 <details open="open">
   <ol>
     <li>  프로젝트 소개</li>
@@ -10,6 +10,14 @@
     <li>  Doc</li>
   </ol>
 </details>
+
+## 🐧 프로젝트 소개  
+<ul>
+  <li>Attention 기반 CNN 활용한 이미지 Blur 및 Noise 완화</li>
+  <ul>
+    <li>Attention~!</li>
+  </ul>
+</ul>
 
 ## Team Member
 > BigData Project
