@@ -63,7 +63,7 @@ def test_training():
             images, labels = images.to(device), labels.to(device)
             outputs = resnet(images)
             _, predicted = torch.max(outputs.data, 1)
-            total += labels.size(0)
+            total += labels.size(0)  
             correct += (predicted == labels).sum().item()
 
  
