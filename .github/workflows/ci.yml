@@ -2,9 +2,9 @@ name: Python application
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "CI/CD" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "CI/CD" ]
 
 permissions:
   contents: read
@@ -36,3 +36,8 @@ jobs:
       run: |
         cd test  
         pytest -v  
+    - name: Build Docker image
+      run: docker build -t my-python-app .
+      
+    - name: Run tests in Docker container
+      run: docker run my-python-app python -m pytest -v ./test/test_training.py
