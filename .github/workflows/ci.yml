@@ -37,6 +37,6 @@ jobs:
         pytest -v  
     - name: Build Docker image
       run: docker build -t my-python-app .
-      
+
     - name: Run tests in Docker container
-      run: docker run my-python-app python -m pytest -v ./test/test_training.py
+      run: docker run my-python-app
