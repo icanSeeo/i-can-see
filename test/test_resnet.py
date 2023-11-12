@@ -33,7 +33,7 @@ def test_training():
     optimizer = optim.SGD(resnet.parameters(), lr=0.01)
 
     # 모델 학습
-    num_epochs = 0
+    num_epochs = 2
     
     for epoch in range(num_epochs):
         running_loss = 0.0
