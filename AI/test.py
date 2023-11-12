@@ -9,6 +9,7 @@ import cv2
 import torch
 
 from PIL import Image
+from matplotlib.animation import FuncAnimation 
 from datetime import datetime
 from sklearn.manifold import TSNE
 from mpl_toolkits.mplot3d import Axes3D
@@ -136,38 +137,57 @@ def inference_model(model, size, mean, std, total, phase):
     combined_cat_feature_maps = torch.cat(cat_feature_maps, dim=0)
 
     # 각 클래스에 대해 t-SNE를 사용하여 3차원으로 축소
-    tsne = TSNE(n_components=3, random_state=42)
-    reduced_dog_features = tsne.fit_transform(combined_dog_feature_maps.view(combined_dog_feature_maps.size(0), -1).cpu().numpy())
-    reduced_cat_features = tsne.fit_transform(combined_cat_feature_maps.view(combined_cat_feature_maps.size(0), -1).cpu().numpy())
+    # tsne = TSNE(n_components=2, random_state=42)
+    # reduced_dog_features = tsne.fit_transform(combined_dog_feature_maps.view(combined_dog_feature_maps.size(0), -1).cpu().numpy())
+    # reduced_cat_features = tsne.fit_transform(combined_cat_feature_maps.view(combined_cat_feature_maps.size(0), -1).cpu().numpy())
+
+    pca = PCA(n_components=3)
+    reduced_dog_features = pca.fit_transform(combined_dog_feature_maps.view(combined_dog_feature_maps.size(0), -1).cpu().numpy())
+    reduced_cat_features = pca.fit_transform(combined_cat_feature_maps.view(combined_cat_feature_maps.size(0), -1).cpu().numpy())
 
     # 시각화
     fig = plt.figure()
     ax = fig.add_subplot(111, projection='3d')
 
     # 강아지 클래스 시각화
-    ax.scatter(
+    scatter_dog = ax.scatter(
         reduced_dog_features[:, 0],
         reduced_dog_features[:, 1],
         reduced_dog_features[:, 2],
         label='Dog',
+        alpha=0.5,
     )
 
     # 고양이 클래스 시각화
-    ax.scatter(
+    scatter_cat = ax.scatter(
         reduced_cat_features[:, 0],
         reduced_cat_features[:, 1],
         reduced_cat_features[:, 2],
         label='Cat',
+        alpha=0.5,
     )
 
-    ax.set_xlabel('Dimension 1')
-    ax.set_ylabel('Dimension 2')
-    ax.set_zlabel('Dimension 3')
-    ax.set_title('t-SNE 3D Visualization')
-
+    # 각 축 레이블 설정
+    ax.set_xlabel('X-Axis')
+    ax.set_ylabel('Y-Axis')
+    ax.set_zlabel('Z-Axis')
+    ax.set_title('PCA 3D Visualization')
     plt.legend()
+
+    # 회전 애니메이션 함수
+    def update(frame):
+        ax.view_init(elev=30, azim=frame)
+        return scatter_dog, scatter_cat
+
+    # 애니메이션 생성
+    ani = FuncAnimation(fig, update, frames=range(0, 360, 3), blit=True)
+
+    # GIF 파일로 저장
+    ani.save('pca_3d_animation.gif', writer='pillow', fps=30)
+
+    # 애니메이션 표시
     plt.show()
-    
+        
     
     # 특징 맵 시각화
     #visualize_feature_maps(all_feature_maps)
@@ -190,7 +210,7 @@ if __name__ == "__main__":
     model = model.to(device)
     criterion = criterion.to(device)
 
-    model_state_dict = torch.load("C:\\Users\\DSEM-Server03\\Desktop\\testdir\\resnet_train_v7.pt", map_location=device)
+    model_state_dict = torch.load("C:\\Users\\DSEM-Server03\\Desktop\\testdir\\resnet_train_v9.pt", map_location=device)
     # 모델 상태만 가져온거라 모델을  import 해야함!!!! 블로그 참조
     model.load_state_dict(model_state_dict)
 
@@ -232,9 +252,9 @@ if __name__ == "__main__":
     # print(model)
 
     num_ptrs = model.fc.in_features
-    print("num_ptrs : ", num_ptrs)
+    #print("num_ptrs : ", num_ptrs)
     #model.fc = Identity()
-    print(model)
+    #print(model)
 
     inference_model(model, size, mean, std, total, phase1)
     # inference_model(model, size, mean, std, total, phase2)

@@ -142,6 +142,23 @@ if __name__ == "__main__":
     criterion = nn.CrossEntropyLoss()
 
     model = model.to(device)
+    
+    # Pretrained ResNet 모델 불러오기
+    pretrained_model = models.resnet50(pretrained=True)
+    pretrained_dict = pretrained_model.state_dict() 
+
+    # 현재 모델의 state_dict
+    model_dict = model.state_dict()
+
+    # Pretrained dict에서 fc layer 및 불필요한 key 제거
+    pretrained_dict = {k: v for k, v in pretrained_dict.items() if k in model_dict and not k.startswith('fc')}
+
+    # 기존 모델 dict에 pretrained dict 병합
+    model_dict.update(pretrained_dict) 
+
+    # 업데이트된 state_dict 모델에 로드
+    model.load_state_dict(model_dict)
+
     criterion = criterion.to(device)
 
 
@@ -225,7 +242,7 @@ if __name__ == "__main__":
     early_stop_counter = 0
 
     wandb.init(project='resnet_inference_Example')
-    wandb.run.name = 'resnet_train_v8'
+    wandb.run.name = 'resnet_train_v9'
     print(wandb.run.name)
     wandb.run.save()
 
