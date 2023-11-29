@@ -9,7 +9,7 @@ import cv2
 import torch
 
 from PIL import Image
-from matplotlib.animation import FuncAnimation 
+from matplotlib.animation import FuncAnimation
 from datetime import datetime
 from sklearn.manifold import TSNE
 from mpl_toolkits.mplot3d import Axes3D
@@ -17,6 +17,9 @@ from sklearn.decomposition import PCA
 from collections import namedtuple
 from ImageTransform import ImageTransform
 from ResNet import ResNet, BasicBlock, Bottleneck, Identity
+
+from ResNet import extract_feature_maps, config_model
+
 
 def visualize_feature_maps(all_feature_maps):
     # 모든 이미지의 특징 맵을 하나의 배열로 결합
@@ -26,7 +29,8 @@ def visualize_feature_maps(all_feature_maps):
     num_images = len(all_feature_maps)
     num_feature_maps = combined_feature_maps.size(1)
 
-    fig, axes = plt.subplots(num_images, num_feature_maps, figsize=(15, 2*num_images))
+    fig, axes = plt.subplots(
+        num_images, num_feature_maps, figsize=(15, 2*num_images))
 
     for i in range(num_images):
         for j in range(num_feature_maps):
@@ -37,172 +41,159 @@ def visualize_feature_maps(all_feature_maps):
 
     plt.show()
 
-def extract_feature_maps(model, test_image):
-    desired_layer = 'layer4' 
-    
-    # 특징 맵 추출
-    feature_maps = None
-    hooks = []
-    
-    def hook_fn(module, input, output):
-        nonlocal feature_maps
-        feature_maps = output
-    
-    for name, layer in model.named_modules():
-        if name == desired_layer:
-            hook = layer.register_forward_hook(hook_fn)
-            hooks.append(hook)
-    
-    with torch.no_grad():
-        model(test_image)
-    
-    for hook in hooks:
-        hook.remove()
-    
-    return feature_maps
 
-def config_model(n):
-    ResNetConfig = namedtuple('ResNetConfig', ['block', 'n_blocks', 'channels'])
-
-    if n == 18:
-        resnet18_config = ResNetConfig(block = BasicBlock,
-                                    n_blocks = [2,2,2,2],
-                                    channels = [64, 128, 256, 512])
-        return resnet18_config
-    elif n == 34:
-        resnet34_config = ResNetConfig(block = BasicBlock,
-                                    n_blocks = [3,4,6,3],
-                                    channels = [64, 128, 256, 512])
-        return resnet34_config
-    elif n == 50:
-        resnet50_config = ResNetConfig(block = Bottleneck,
-                                    n_blocks = [3, 4, 6, 3],
-                                    channels = [64, 128, 256, 512])
-        return resnet50_config
-    elif n == 101:
-        resnet101_config = ResNetConfig(block = Bottleneck,
-                                        n_blocks = [3, 4, 23, 3],
-                                        channels = [64, 128, 256, 512])
-        return resnet101_config
-    elif n == 152:
-        resnet152_config = ResNetConfig(block = Bottleneck,
-                                        n_blocks = [3, 8, 36, 3],
-                                        channels = [64, 128, 256, 512])
-        return resnet152_config
-def inference_model(model, size, mean, std, total, phase):
+def inference_model(model, label_names, size, mean, std, total, phase):
     correct = 0
-    id_list.clear()
-    pred_list.clear()
     feature_maps = None
     all_feature_maps = []
-    dog_feature_maps = []
-    cat_feature_maps = []
+
+    all_feature_maps = [[] for _ in range(len(label_names))]  # [[], [], [], []
+    combined_feature_maps = [[] for _ in range(len(label_names))]
 
     with torch.no_grad():
         for test_path in test_images_filepaths:
             img = Image.open(test_path).convert('RGB')
-            _id =test_path.split('\\')[-1].split('.')[0]
-            label = label_dic[test_path.split('\\')[-2]]
-            
+            _id = test_path.split('/')[-1].split('.')[0]
+            label_idx = label_names.index(test_path.split('/')[-2])
+
             transform = ImageTransform(size, mean, std)
             img = transform(img, phase=phase)
             img = img.unsqueeze(0)
             img = img.to(device)
 
             model.eval()
-            outputs = model(img)
-            preds = F.softmax(outputs[0], dim=1)[:, 1].tolist()[0]
+            outputs = model(img)[0]
 
-            if preds > 0.5:
-                preds = 1
-            else:
-                preds = 0
-            
+            preds_label_idx = torch.argmax(outputs, dim=1)
+            # print('pred label', preds_label_idx)
+
             # 특징 맵 추출
             feature_maps = extract_feature_maps(model, img)
-            if label == 1:
-                dog_feature_maps.append(feature_maps)
-            else:
-                cat_feature_maps.append(feature_maps)
+            all_feature_maps[preds_label_idx].append(feature_maps)
 
-            if preds == label:
+            if preds_label_idx == label_idx:
                 correct += 1
-            id_list.append(_id)
-            pred_list.append(preds)
 
-    print(f"{phase} Test data ACC : {correct} / {total} = {correct / total}")
+        print(f"{phase} Test data ACC : {correct} / {total} = {correct / total}")
 
-    # 강아지와 고양이 피쳐 맵을 하나의 배열로 결합
-    combined_dog_feature_maps = torch.cat(dog_feature_maps, dim=0)
-    combined_cat_feature_maps = torch.cat(cat_feature_maps, dim=0)
+    return all_feature_maps
 
-    # 각 클래스에 대해 t-SNE를 사용하여 3차원으로 축소
-    # tsne = TSNE(n_components=2, random_state=42)
-    # reduced_dog_features = tsne.fit_transform(combined_dog_feature_maps.view(combined_dog_feature_maps.size(0), -1).cpu().numpy())
-    # reduced_cat_features = tsne.fit_transform(combined_cat_feature_maps.view(combined_cat_feature_maps.size(0), -1).cpu().numpy())
 
-    pca = PCA(n_components=3)
-    reduced_dog_features = pca.fit_transform(combined_dog_feature_maps.view(combined_dog_feature_maps.size(0), -1).cpu().numpy())
-    reduced_cat_features = pca.fit_transform(combined_cat_feature_maps.view(combined_cat_feature_maps.size(0), -1).cpu().numpy())
+def reduce_dimensions(all_feature_maps, method='pca', n_components=3):
+    for feature_maps in all_feature_maps:
+        print(len(feature_maps), type(feature_maps))
+    combined_all_feature_maps = [
+        torch.cat(feature_maps, dim=0) for feature_maps in all_feature_maps]
+    if method == 'pca':
+        pca = PCA(n_components=n_components)
+        reduced_all_features = [
+            pca.fit_transform(combined_feature_maps.view(
+                combined_feature_maps.size(0), -1).cpu().numpy())
+            for combined_feature_maps in combined_all_feature_maps]
+    elif method == 'tsne':
+        tsne = TSNE(n_components=n_components, random_state=42, perplexity=10)
+        reduced_all_features = [tsne.fit_transform(combined_feature_maps.view(combined_feature_maps.size(0), -1).cpu().numpy())
+                                for combined_feature_maps in combined_all_feature_maps]
+    else:
+        raise ValueError('Wrong method name')
 
-    # 시각화
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
+    return reduced_all_features
 
-    # 강아지 클래스 시각화
-    scatter_dog = ax.scatter(
-        reduced_dog_features[:, 0],
-        reduced_dog_features[:, 1],
-        reduced_dog_features[:, 2],
-        label='Dog',
-        alpha=0.5,
-    )
 
-    # 고양이 클래스 시각화
-    scatter_cat = ax.scatter(
-        reduced_cat_features[:, 0],
-        reduced_cat_features[:, 1],
-        reduced_cat_features[:, 2],
-        label='Cat',
-        alpha=0.5,
-    )
+def plot_feature_maps(reduced_all_features, label_names, method='pca', n_components=3, dst_label_names=[]):
 
-    # 각 축 레이블 설정
-    ax.set_xlabel('X-Axis')
-    ax.set_ylabel('Y-Axis')
-    ax.set_zlabel('Z-Axis')
-    ax.set_title('PCA 3D Visualization')
-    plt.legend()
+    if n_components == 3:
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
 
-    # 회전 애니메이션 함수
-    def update(frame):
-        ax.view_init(elev=30, azim=frame)
-        return scatter_dog, scatter_cat
+        ax.set_xlabel('X-Axis')
+        ax.set_ylabel('Y-Axis')
+        ax.set_zlabel('Z-Axis')
+        ax.set_title(f'{method.upper()} 3D Visualization')
+        plt.legend(label_names)
 
-    # 애니메이션 생성
-    ani = FuncAnimation(fig, update, frames=range(0, 360, 3), blit=True)
+        scatter_list = [
+            ax.scatter(
+                reduced_features[:, 0],
+                reduced_features[:, 1],
+                reduced_features[:, 2],
+                label=label_name,
+                alpha=0.5,
+            )
+            for label_name, reduced_features in zip(label_names, reduced_all_features) if label_name in dst_label_names]
 
-    # GIF 파일로 저장
-    ani.save('pca_3d_animation.gif', writer='pillow', fps=30)
 
-    # 애니메이션 표시
-    plt.show()
-        
-    
-    # 특징 맵 시각화
-    #visualize_feature_maps(all_feature_maps)
+        def update(frame):
+            ax.view_init(elev=30, azim=frame)
+            return (*scatter_list, )
+
+        ani = FuncAnimation(fig, update, frames=range(0, 360, 3), blit=True)
+        ani.save('pca_3d_animation.gif', writer='pillow', fps=30)
+
+    elif n_components == 2:
+        plt.figure(figsize=(10, 10))
+        for label_name, reduced_features in zip(label_names, reduced_all_features):
+            if dst_label_names:
+                if label_name in dst_label_names:
+                    plt.scatter(reduced_features[:, 0],
+                                reduced_features[:, 1], alpha=0.5, label=label_name)
+            else:
+                plt.scatter(reduced_features[:, 0],
+                            reduced_features[:, 1], alpha=0.5)
+        plt.title(f'{method.upper()} Visualization')
+        plt.legend(label_names)
+
+        plt.savefig(f'{method}_visualization.png')
+    else:
+        raise ValueError('Wrong n_components value')
+
+# 차원축소 + 애니메이션 함수
+
+
+def reduce_and_animate(feature_maps, method='pca', n_components=3):
+
+    reduced_features = reduce_dimensions(feature_maps, method, n_components)
+
+    # 3D 플롯
+    if n_components == 3:
+        fig = plt.figure()
+        ax = fig.add_subplot(111, projection='3d')
+
+        # 산점도 표시
+        scatter = ax.scatter(
+            reduced_features[:, 0], reduced_features[:, 1], reduced_features[:, 2])
+
+        # 애니메이션 생성
+        def update(frame):
+            ax.view_init(elev=30, azim=frame)
+            return scatter
+
+        ani = FuncAnimation(fig, update, frames=range(0, 360, 3), blit=True)
+
+    return reduced_features, ani
+
 
 if __name__ == "__main__":
-
-    os.environ['KMP_DUPLICATE_LIB_OK']='True'
+    os.environ['KMP_DUPLICATE_LIB_OK'] = 'True'
     os.environ["CUDA_VISIBLE_DEVICES"] = "0,1"
 
-    device = "cuda" if torch.cuda.is_available() else "cpu"
+    size = 224
+    mean = (0.485, 0.456, 0.406)
+    std = (0.229, 0.224, 0.225)
+    batch_size = 32
+
+    data_directory = './data/vc/train/'
+
+    label_paths = sorted([os.path.join(data_directory, f)
+                         for f in os.listdir(data_directory)])
+    label_names = sorted([f for f in os.listdir(data_directory)])
+
+    device = "cpu"  # "cuda" if torch.cuda.is_available() else "cpu"
     print(device)
 
-    OUTPUT_DIM = 2
+    OUTPUT_DIM = len(label_names)
     model = ResNet(config_model(50), OUTPUT_DIM)
-    #print(model)
+    # print(model)
 
     optimizer = optim.Adam(model.parameters(), lr=1e-4)
     criterion = nn.CrossEntropyLoss()
@@ -210,52 +201,52 @@ if __name__ == "__main__":
     model = model.to(device)
     criterion = criterion.to(device)
 
-    model_state_dict = torch.load("C:\\Users\\DSEM-Server03\\Desktop\\testdir\\resnet_train_v9.pt", map_location=device)
-    # 모델 상태만 가져온거라 모델을  import 해야함!!!! 블로그 참조
+    model_state_dict = torch.load("./resnet_train_v11.pt", map_location=device)
     model.load_state_dict(model_state_dict)
 
-    id_list = []
-    pred_list = []
-    _id=0
+    _id = 0
 
-    size = 224
-    mean = (0.485, 0.456, 0.406)
-    std = (0.229, 0.224, 0.225)
-    batch_size = 32
+    print(label_paths)
+    print(label_names)
+    # print('label : ', label_paths) # "./data/l4/bikes/", "./data/l4/cars/", "./data/l4/cats/", "./data/l4/dogs/"
 
+    image_paths = [sorted([os.path.join(label_path, f) for f in os.listdir(
+        label_path)]) for label_path in label_paths]
+    # "./data/l4/bikes/0 ... 1000.jpg", "./data/l4/cars/0 ... 1000.jpg", "./data/l4/cats/0 ... 1000.jpg", "./data/l4/dogs/0 ... 1000.jpg"
 
-    cat_directory = "C:\\Users\\DSEM-Server03\\Desktop\\tmp\\PetImages\\Cat\\"
-    dog_directory = "C:\\Users\\DSEM-Server03\\Desktop\\tmp\\PetImages\\Dog\\"
+    all_images_paths = [path for paths in image_paths for path in paths]
+    print(len(all_images_paths))
 
-    cat_images_filepaths = sorted([os.path.join(cat_directory, f) for f in os.listdir(cat_directory)])   
-    dog_images_filepaths = sorted([os.path.join(dog_directory, f) for f in os.listdir(dog_directory)])
-    images_filepaths = [*cat_images_filepaths, *dog_images_filepaths]    
-    correct_images_filepaths = [i for i in images_filepaths if cv2.imread(i) is not None]
+    correct_images_filepaths = [
+        i for i in all_images_paths if cv2.imread(i) is not None]
 
-    #random.seed(42)     
-    random.seed(datetime.now().timestamp())
+    # split train, val, test
+    random.seed(42)
     random.shuffle(correct_images_filepaths)
 
-
-    test_images_filepaths = correct_images_filepaths[-2000:]    
+    test_images_filepaths = correct_images_filepaths[:]
     print(len(test_images_filepaths))
 
-    label_dic = {'Dog':1, 'Cat':0}
-
     total = len(test_images_filepaths)
-    correct = 0
 
     phase1 = 'val'
     phase2 = 'random'
     phase3 = 'rotate'
-    
+
     # print(model)
 
     num_ptrs = model.fc.in_features
-    #print("num_ptrs : ", num_ptrs)
-    #model.fc = Identity()
-    #print(model)
 
-    inference_model(model, size, mean, std, total, phase1)
+    method = 'tsne'
+    n_components = 3
+    dst_label_names =  ['SUV', 'family sedan'] # ['SUV', 'racing car']
+
+    all_feature_maps = inference_model(
+        model, label_names, size, mean, std, total, phase1)
+    reduced_all_features = reduce_dimensions(
+        all_feature_maps, method=method, n_components=n_components)
+    plot_feature_maps(reduced_all_features, label_names,
+                      method=method, n_components=n_components, dst_label_names=dst_label_names)
+
     # inference_model(model, size, mean, std, total, phase2)
     # inference_model(model, size, mean, std, total, phase3)
