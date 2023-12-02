@@ -3,3 +3,7 @@ fruit/*
 newdata/*
 data/*
 wandb/
+
+datasets/
+runs/
+*.pt
