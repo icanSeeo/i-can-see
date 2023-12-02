@@ -16,7 +16,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from sklearn.decomposition import PCA
 from collections import namedtuple
 from ImageTransform import ImageTransform
-from ResNet import ResNet, BasicBlock, Bottleneck, Identity
+from ResNet import CBAM, ResNet, BasicBlock, Bottleneck, Identity
 
 def visualize_feature_maps(all_feature_maps):
     # 모든 이미지의 특징 맵을 하나의 배열로 결합
@@ -132,65 +132,66 @@ def inference_model(model, size, mean, std, total, phase):
 
     print(f"{phase} Test data ACC : {correct} / {total} = {correct / total}")
 
-    # 강아지와 고양이 피쳐 맵을 하나의 배열로 결합
-    combined_dog_feature_maps = torch.cat(dog_feature_maps, dim=0)
-    combined_cat_feature_maps = torch.cat(cat_feature_maps, dim=0)
+    # # 강아지와 고양이 피쳐 맵을 하나의 배열로 결합
+    # combined_dog_feature_maps = torch.cat(dog_feature_maps, dim=0)
+    # combined_cat_feature_maps = torch.cat(cat_feature_maps, dim=0)
 
-    # 각 클래스에 대해 t-SNE를 사용하여 3차원으로 축소
-    # tsne = TSNE(n_components=2, random_state=42)
-    # reduced_dog_features = tsne.fit_transform(combined_dog_feature_maps.view(combined_dog_feature_maps.size(0), -1).cpu().numpy())
-    # reduced_cat_features = tsne.fit_transform(combined_cat_feature_maps.view(combined_cat_feature_maps.size(0), -1).cpu().numpy())
+    # # 각 클래스에 대해 t-SNE를 사용하여 3차원으로 축소
+    # # tsne = TSNE(n_components=2, random_state=42)
+    # # reduced_dog_features = tsne.fit_transform(combined_dog_feature_maps.view(combined_dog_feature_maps.size(0), -1).cpu().numpy())
+    # # reduced_cat_features = tsne.fit_transform(combined_cat_feature_maps.view(combined_cat_feature_maps.size(0), -1).cpu().numpy())
 
-    pca = PCA(n_components=3)
-    reduced_dog_features = pca.fit_transform(combined_dog_feature_maps.view(combined_dog_feature_maps.size(0), -1).cpu().numpy())
-    reduced_cat_features = pca.fit_transform(combined_cat_feature_maps.view(combined_cat_feature_maps.size(0), -1).cpu().numpy())
+    # pca = PCA(n_components=3)
+    # reduced_dog_features = pca.fit_transform(combined_dog_feature_maps.view(combined_dog_feature_maps.size(0), -1).cpu().numpy())
+    # reduced_cat_features = pca.fit_transform(combined_cat_feature_maps.view(combined_cat_feature_maps.size(0), -1).cpu().numpy())
 
-    # 시각화
-    fig = plt.figure()
-    ax = fig.add_subplot(111, projection='3d')
+    # # 시각화
+    # fig = plt.figure()
+    # ax = fig.add_subplot(111, projection='3d')
 
-    # 강아지 클래스 시각화
-    scatter_dog = ax.scatter(
-        reduced_dog_features[:, 0],
-        reduced_dog_features[:, 1],
-        reduced_dog_features[:, 2],
-        label='Dog',
-        alpha=0.5,
-    )
+    # # 강아지 클래스 시각화
+    # scatter_dog = ax.scatter(
+    #     reduced_dog_features[:, 0],
+    #     reduced_dog_features[:, 1],
+    #     reduced_dog_features[:, 2],
+    #     label='Dog',
+    #     alpha=0.5,
+    # )
 
-    # 고양이 클래스 시각화
-    scatter_cat = ax.scatter(
-        reduced_cat_features[:, 0],
-        reduced_cat_features[:, 1],
-        reduced_cat_features[:, 2],
-        label='Cat',
-        alpha=0.5,
-    )
+    # # 고양이 클래스 시각화
+    # scatter_cat = ax.scatter(
+    #     reduced_cat_features[:, 0],
+    #     reduced_cat_features[:, 1],
+    #     reduced_cat_features[:, 2],
+    #     label='Cat',
+    #     alpha=0.5,
+    # )
 
-    # 각 축 레이블 설정
-    ax.set_xlabel('X-Axis')
-    ax.set_ylabel('Y-Axis')
-    ax.set_zlabel('Z-Axis')
-    ax.set_title('PCA 3D Visualization')
-    plt.legend()
+    # # 각 축 레이블 설정
+    # ax.set_xlabel('X-Axis')
+    # ax.set_ylabel('Y-Axis')
+    # ax.set_zlabel('Z-Axis')
+    # ax.set_title('PCA 3D Visualization')
+    # plt.legend()
 
-    # 회전 애니메이션 함수
-    def update(frame):
-        ax.view_init(elev=30, azim=frame)
-        return scatter_dog, scatter_cat
+    # # 회전 애니메이션 함수
+    # def update(frame):
+    #     ax.view_init(elev=30, azim=frame)
+    #     return scatter_dog, scatter_cat
 
-    # 애니메이션 생성
-    ani = FuncAnimation(fig, update, frames=range(0, 360, 3), blit=True)
+    # # 애니메이션 생성
+    # ani = FuncAnimation(fig, update, frames=range(0, 360, 3), blit=True)
 
-    # GIF 파일로 저장
-    ani.save('pca_3d_animation.gif', writer='pillow', fps=30)
+    # # GIF 파일로 저장
+    # ani.save('pca_3d_animation.gif', writer='pillow', fps=30)
 
-    # 애니메이션 표시
-    plt.show()
+    # # 애니메이션 표시
+    # plt.show()
         
     
     # 특징 맵 시각화
     #visualize_feature_maps(all_feature_maps)
+
 
 if __name__ == "__main__":
 
@@ -202,17 +203,23 @@ if __name__ == "__main__":
 
     OUTPUT_DIM = 2
     model = ResNet(config_model(50), OUTPUT_DIM)
+    model2 = ResNet(config_model(50), OUTPUT_DIM)
     #print(model)
 
     optimizer = optim.Adam(model.parameters(), lr=1e-4)
     criterion = nn.CrossEntropyLoss()
 
     model = model.to(device)
+    model2 = model2.to(device)
     criterion = criterion.to(device)
 
+    model2.layer3[-1].add_module('cbam', CBAM(1024))
+
     model_state_dict = torch.load("C:\\Users\\DSEM-Server03\\Desktop\\testdir\\resnet_train_v9.pt", map_location=device)
+    model_state_dict2 = torch.load("C:\\Users\\DSEM-Server03\\Desktop\\testdir\\resnet_train_with_CBAM_v1.pt", map_location=device)
     # 모델 상태만 가져온거라 모델을  import 해야함!!!! 블로그 참조
     model.load_state_dict(model_state_dict)
+    model2.load_state_dict(model_state_dict2)
 
     id_list = []
     pred_list = []
@@ -252,10 +259,59 @@ if __name__ == "__main__":
     # print(model)
 
     num_ptrs = model.fc.in_features
+
     #print("num_ptrs : ", num_ptrs)
     #model.fc = Identity()
     #print(model)
 
+    print("without cbam")
     inference_model(model, size, mean, std, total, phase1)
+    print("with cbam")
+    inference_model(model2, size, mean, std, total, phase1)
+
+    # # 각 레이어 별 피쳐맵 시각화
+    # all_feature_maps = []
+
+    # for i in range(1, 5):
+    #     layer = getattr(model, f'layer{i}')
+    #     for j in range(len(layer)):
+    #         block = layer[j]
+    #         for k in range(len(block)):
+    #             module = block[k]
+    #             if isinstance(module, BasicBlock):
+    #                 all_feature_maps.append(module.conv1.weight)
+    #                 all_feature_maps.append(module.conv2.weight)
+    #             elif isinstance(module, Bottleneck):
+    #                 all_feature_maps.append(module.conv1.weight)
+    #                 all_feature_maps.append(module.conv2.weight)
+    #                 all_feature_maps.append(module.conv3.weight)
+    #             else:
+    #                 continue
+    # visualize_feature_maps(all_feature_maps)
+
+    # # model2도 동일하게
+    # all_feature_maps.clear()
+
+    # for i in range(1, 5):
+    #     layer = getattr(model2, f'layer{i}')
+    #     for j in range(len(layer)):
+    #         block = layer[j]
+    #         for k in range(len(block)):
+    #             module = block[k]
+    #             if isinstance(module, BasicBlock):
+    #                 all_feature_maps.append(module.conv1.weight)
+    #                 all_feature_maps.append(module.conv2.weight)
+    #             elif isinstance(module, Bottleneck):
+    #                 all_feature_maps.append(module.conv1.weight)
+    #                 all_feature_maps.append(module.conv2.weight)
+    #                 all_feature_maps.append(module.conv3.weight)
+    #             else:
+    #                 continue
+    # visualize_feature_maps(all_feature_maps)
+
+    # 오류나옴
+   
+    
+
     # inference_model(model, size, mean, std, total, phase2)
     # inference_model(model, size, mean, std, total, phase3)

@@ -1,0 +1,57 @@
+{
+    "os": "Windows-10-10.0.19045-SP0",
+    "python": "3.11.4",
+    "heartbeatAt": "2023-11-20T04:07:57.539444",
+    "startedAt": "2023-11-20T04:07:56.650576",
+    "docker": null,
+    "cuda": null,
+    "args": [],
+    "state": "running",
+    "program": "c:\\Users\\DSEM-Server03\\Desktop\\gittest\\i-can-see\\AI\\resnet_inference.py",
+    "codePathLocal": "AI\\resnet_inference.py",
+    "codePath": "AI\\resnet_inference.py",
+    "git": {
+        "remote": "https://github.com/icanSeeo/i-can-see.git",
+        "commit": "507e6ad12e80ff51694ef572ee4a6793aa4b2604"
+    },
+    "email": "aprkal12@naver.com",
+    "root": "C:/Users/DSEM-Server03/Desktop/gittest/i-can-see",
+    "host": "DSEM-Server03",
+    "username": "DSEM-Server03",
+    "executable": "C:\\Users\\DSEM-Server03\\anaconda3\\python.exe",
+    "cpu_count": 12,
+    "cpu_count_logical": 24,
+    "cpu_freq": {
+        "current": 3504.0,
+        "min": 0.0,
+        "max": 3504.0
+    },
+    "cpu_freq_per_core": [
+        {
+            "current": 3504.0,
+            "min": 0.0,
+            "max": 3504.0
+        }
+    ],
+    "disk": {
+        "/": {
+            "total": 953.2685508728027,
+            "used": 307.0751152038574
+        }
+    },
+    "gpu": "NVIDIA GeForce RTX 2080 Ti",
+    "gpu_count": 2,
+    "gpu_devices": [
+        {
+            "name": "NVIDIA GeForce RTX 2080 Ti",
+            "memory_total": 11811160064
+        },
+        {
+            "name": "NVIDIA GeForce RTX 2080 Ti",
+            "memory_total": 11811160064
+        }
+    ],
+    "memory": {
+        "total": 63.6912956237793
+    }
+}
