@@ -143,7 +143,7 @@ if __name__ == "__main__":
     criterion = nn.CrossEntropyLoss()
 
     model = model.to(device)
-    
+    model.layer3[-1].add_module('cbam', CBAM(1024))
     # # Pretrained ResNet 모델 불러오기
     # pretrained_model = models.resnet50(pretrained=True)
     # pretrained_dict = pretrained_model.state_dict() 
@@ -246,7 +246,7 @@ if __name__ == "__main__":
     # model.layer3[-1].add_module('cbam', CBAM(1024))
 
     wandb.init(project='resnet_fine-tuning_experiment')
-    wandb.run.name = 'resnet_train_add_datas'
+    wandb.run.name = 'resnet-cbam04-AMF'
     print(wandb.run.name)
     wandb.run.save()
 
@@ -264,7 +264,7 @@ if __name__ == "__main__":
             
         if valid_loss < best_valid_loss:
             best_valid_loss = valid_loss
-            torch.save(model.state_dict(), f'C:\\Users\\DSEM-Server03\\Desktop\\testdir\\{wandb.run.name}.pt')
+            torch.save(model.state_dict(), f'{wandb.run.name}.pt')
             early_stop_counter = 0
         else:
             early_stop_counter += 1
@@ -358,4 +358,3 @@ if __name__ == "__main__":
     # img = cv2.imread(test_images_filepaths[0])
     #bplt.imshow(img)
     # plt.show()
-

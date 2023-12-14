@@ -16,7 +16,7 @@ from mpl_toolkits.mplot3d import Axes3D
 from sklearn.decomposition import PCA
 from collections import namedtuple
 from ImageTransform import ImageTransform
-from ResNet import ResNet, BasicBlock, Bottleneck, Identity
+from ResNet import ResNet, BasicBlock, Bottleneck, Identity, CBAM
 
 from test import extract_feature_maps, config_model
 
@@ -53,8 +53,8 @@ def inference_model(model, label_names, size, mean, std, total, phase):
     with torch.no_grad():
         for test_path in test_images_filepaths:
             img = Image.open(test_path).convert('RGB')
-            _id = test_path.split('\\')[-1].split('.')[0]
-            label_idx = label_names.index(test_path.split('\\')[-2])
+            _id = test_path.split('/')[-1].split('.')[0]
+            label_idx = label_names.index(test_path.split('/')[-2])
 
             transform = ImageTransform(size, mean, std)
             img = transform(img, phase=phase)
@@ -79,24 +79,39 @@ def inference_model(model, label_names, size, mean, std, total, phase):
     return all_feature_maps
 
 
-def reduce_dimensions(all_feature_maps, method='pca', n_components=3):
+def reduce_dimensions(all_feature_maps, method='pca', n_components=3, compress=False):
     for feature_maps in all_feature_maps:
-        print(len(feature_maps), type(feature_maps))
-    combined_all_feature_maps = [
-        torch.cat(feature_maps, dim=0) for feature_maps in all_feature_maps]
-    if method == 'pca':
-        pca = PCA(n_components=n_components)
-        reduced_all_features = [
-            pca.fit_transform(combined_feature_maps.view(
-                combined_feature_maps.size(0), -1).cpu().numpy())
-            for combined_feature_maps in combined_all_feature_maps]
-    elif method == 'tsne':
-        tsne = TSNE(n_components=n_components, random_state=42, perplexity=10)
-        reduced_all_features = [tsne.fit_transform(combined_feature_maps.view(combined_feature_maps.size(0), -1).cpu().numpy())
-                                for combined_feature_maps in combined_all_feature_maps]
-    else:
-        raise ValueError('Wrong method name')
+        combined_feature_maps = torch.cat(tuple(feature_maps), dim=0)
+        
+        
+        flattened_feature_maps = combined_feature_maps.view(
+            combined_feature_maps.size(0), -1).cpu().numpy()
+        
+        
+        if method == 'pca':
+            pca = PCA(n_components=n_components)
+            reducer = PCA(n_components=n_components)
+        elif method == 'tsne':
+            reducer = TSNE(n_components=n_components, random_state=42, perplexity=10)
+        else:
+            raise ValueError('Wrong method name')
 
+        reduced_features = torch.from_numpy(reducer.fit_transform(flattened_feature_maps.T))
+        mean_feature = torch.mean(reduced_features, dim=0)
+        
+        print('flattened :', flattened_feature_maps.shape)
+        print('combined :', combined_feature_maps.shape)
+        print('flattened T:', flattened_feature_maps.T.shape)
+        print('reduced featuremap shape ', reduced_features.shape)
+        print('mean featuremap shape ', mean_feature.shape)
+        print()
+        
+        if compress:
+            reduced_all_features.append(mean_feature)
+        else:
+            reduced_all_features.append(reduced_features)
+        
+        
     return reduced_all_features
 
 
@@ -182,7 +197,7 @@ if __name__ == "__main__":
     std = (0.229, 0.224, 0.225)
     batch_size = 32
 
-    data_directory = "C:\\Users\\DSEM-Server03\\Desktop\\gittest\\i-can-see\\AI\\fruit\\data\\test"
+    data_directory = "./dataset/AMF/val"
 
     label_paths = sorted([os.path.join(data_directory, f)
                          for f in os.listdir(data_directory)])
@@ -192,20 +207,19 @@ if __name__ == "__main__":
     print(device)
 
     OUTPUT_DIM = len(label_names)
-    model = ResNet(config_model(50), OUTPUT_DIM)
-    
+    model = ResNet(config_model(18), OUTPUT_DIM)
+    model.layer3[-1].add_module('cbam', CBAM(1024))
     # print(model)
 
     optimizer = optim.Adam(model.parameters(), lr=1e-4)
     criterion = nn.CrossEntropyLoss()
 
     model = model.to(device)
-    criterion = criterion.to(device)
 
-    model_state_dict = torch.load("C:\\Users\\DSEM-Server03\\Desktop\\testdir\\resnet_train_fruits.pt", map_location=device)
+    model_state_dict = torch.load("./pt_models/resnet18_CBAM_AMF.pt", map_location=device)
     model.load_state_dict(model_state_dict)
-
-    _id = 0
+    
+    model.eval()
 
     print(label_paths)
     print(label_names)
@@ -213,7 +227,7 @@ if __name__ == "__main__":
 
     image_paths = [sorted([os.path.join(label_path, f) for f in os.listdir(
         label_path)]) for label_path in label_paths]
-    # "./data/l4/bikes/0 ... 1000.jpg", "./data/l4/cars/0 ... 1000.jpg", "./data/l4/cats/0 ... 1000.jpg", "./data/l4/dogs/0 ... 1000.jpg"
+    # "./data/l4/bikes/0 ... 1.000.jpg", "./data/l4/cars/0 ... 1000.jpg", "./data/l4/cats/0 ... 1000.jpg", "./data/l4/dogs/0 ... 1000.jpg"
 
     all_images_paths = [path for paths in image_paths for path in paths]
     print(len(all_images_paths))
@@ -229,11 +243,6 @@ if __name__ == "__main__":
     print(len(test_images_filepaths))
 
     total = len(test_images_filepaths)
-
-    phase1 = 'val'
-    phase2 = 'random'
-    phase3 = 'rotate'
-
     # print(model)
 
     num_ptrs = model.fc.in_features
@@ -241,14 +250,15 @@ if __name__ == "__main__":
     method = 'tsne'
     method2 = 'pca'
     n_components = 3
-    dst_label_names =  ['Orange', 'Peach', 'Guava', 'Plum', 'Tomatoes'] # ['SUV', 'racing car']
+    dst_label_names =  label_names #['Orange', 'Peach', 'Guava', 'Plum', 'Tomatoes'] # ['SUV', 'racing car']
 
     all_feature_maps = inference_model(
-        model, label_names, size, mean, std, total, phase1)
+        model, label_names, size, mean, std, total, 'val')
     reduced_all_features = reduce_dimensions(
         all_feature_maps, method=method, n_components=n_components)
     reduced_all_features2 = reduce_dimensions(
         all_feature_maps, method=method2, n_components=n_components)
+    
     plot_feature_maps(reduced_all_features, label_names,
                       method=method, n_components=n_components, dst_label_names=dst_label_names)
     plot_feature_maps(reduced_all_features2, label_names,

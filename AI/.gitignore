@@ -5,5 +5,7 @@ data/*
 wandb/
 
 datasets/
+dataset/
+results/
 runs/
 *.pt
