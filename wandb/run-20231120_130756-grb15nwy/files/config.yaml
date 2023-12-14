@@ -1,0 +1,38 @@
+wandb_version: 1
+
+_wandb:
+  desc: null
+  value:
+    python_version: 3.11.4
+    cli_version: 0.16.0
+    framework: torch
+    is_jupyter_run: false
+    is_kaggle_kernel: false
+    start_time: 1700453276.66753
+    t:
+      1:
+      - 1
+      - 41
+      - 55
+      2:
+      - 1
+      - 41
+      - 55
+      3:
+      - 17
+      - 23
+      - 37
+      4: 3.11.4
+      5: 0.16.0
+      8:
+      - 3
+      - 5
+      10:
+      - 3
+      13: windows-amd64
+epochs:
+  desc: null
+  value: 3000
+batch_size:
+  desc: null
+  value: 32

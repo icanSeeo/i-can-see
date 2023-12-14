@@ -1,0 +1,11 @@
+Animal/*
+fruit/*
+newdata/*
+data/*
+wandb/
+
+datasets/
+dataset/
+results/
+runs/
+*.pt

@@ -21,7 +21,7 @@ class ImageAug():
         batch_size = 16
         original_images = self.originalset()
         # 이미지 폴더로부터 데이터를 로드합니다.
-        transform_dataset = ImageFolder(root='C:\\Users\\DH\\Desktop\\tmp\\PetImages',  # 다운로드 받은 폴더의 root 경로를 지정합니다.
+        transform_dataset = ImageFolder(root='C:\\Users\\DSEM-Server03\\Desktop\\tmp\\PetImages',  # 다운로드 받은 폴더의 root 경로를 지정합니다.
                                         transform=transform)
 
         # 데이터 로더를 생성합니다.
@@ -56,8 +56,9 @@ class ImageAug():
         else:
             raise Exception("not correct command")
 
-        # print(type(transform_images))
-        # print(type(transform_dataset))
+        print(type(transform_images[0]))
+        print(type(transform_images))
+        print(type(transform_dataset))
 
     def originalset(self):
         # 랜덤 시드 설정
@@ -65,7 +66,7 @@ class ImageAug():
         # 이미지 크기를 224 x 224 로 조정합니다
         IMAGE_SIZE = 224
 
-        original_dataset = ImageFolder(root='C:\\Users\\DH\\Desktop\\tmp\\PetImages',  # 다운로드 받은 폴더의 root 경로를 지정합니다.
+        original_dataset = ImageFolder(root='C:\\Users\\DSEM-Server03\\Desktop\\tmp\\PetImages',  # 다운로드 받은 폴더의 root 경로를 지정합니다.
                                        transform=transforms.Compose([  # Resize 후 정규화(0~1)를 수행합니다.
                                            transforms.Resize(
                                                (IMAGE_SIZE, IMAGE_SIZE)),
@@ -90,7 +91,7 @@ class ImageAug():
     def trans_colorJitter(self, brightness, contrast, saturation, hue):
         image_transform = transforms.Compose([
             transforms.Resize((256, 256)),
-            # ColorJitter 적용
+            # ColorJitter 적용                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   
             transforms.ColorJitter(brightness=brightness,
                                    contrast=contrast,
                                    saturation=saturation,
@@ -161,6 +162,7 @@ class ImageAug():
 
 if __name__ == '__main__':
     freeze_support()
+    os.environ['KMP_DUPLICATE_LIB_OK']='True'
 
     IA = ImageAug()
     # IA.download_dataset(
@@ -168,9 +170,9 @@ if __name__ == '__main__':
     #    'PetImages') # 데이터셋 zip 경로, 생성할 폴더 이름
     # transform_info = IA.trans_colorJitter((0.5, 0.9), (0.4, 0.8), (0.7, 0.9), (-0.2, 0.2))
     # transform_info = IA.trans_horizontal_flip(0.8)
-    # transform_info = IA.trans_gaussian_blur((19, 19), (1.0, 2.0))
-    # transform_info = IA.trans_rotate((-30, 30), 0)
-    transform_info = IA.trans_padding((100, 50, 100, 200), 255, 'symmetric')
+    transform_info = IA.trans_gaussian_blur((19, 19), (1.0, 2.0))
+    #transform_info = IA.trans_rotate((-30, 30), 0)
+    #transform_info = IA.trans_padding((100, 50, 100, 200), 255, 'symmetric')
     # transform_info = IA.autotransform(
     # transforms.autoaugment.AutoAugmentPolicy.IMAGENET)
 
