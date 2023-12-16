@@ -5,6 +5,12 @@ print(yolov5)
 import torch
 from models.yolo import Model
 
+print(Model)
+
+# print sys.path
+import sys
+print(sys.path)
+
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 model = Model(cfg='models/yolov5n.yaml', ch=3, nc=80).to(device)
 
