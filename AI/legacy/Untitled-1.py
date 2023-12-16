@@ -35,7 +35,7 @@ import cv2
 from torch.utils.data import DataLoader, Dataset
 from PIL import Image, UnidentifiedImageError, ImageFile
 
-from ResNet import ResNet, BasicBlock, Bottleneck
+from AI.classification.model.ResNet import ResNet, BasicBlock, Bottleneck
 from ImageTransform import ImageTransform
 
 
