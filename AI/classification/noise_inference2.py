@@ -1,65 +1,25 @@
+import sys
 import os
-import random
+
+script_dir = os.path.dirname(os.path.abspath(__file__))
+
+project_root = os.path.abspath(os.path.join(script_dir, '..', '..'))
+sys.path.append(project_root)
+print(project_root)
+
+
 from matplotlib import pyplot as plt
-import torch.nn as nn
-import torch.nn.functional as F
-import torch.optim as optim
 import numpy as np
-import cv2
 import torch
-
 from PIL import Image
-from matplotlib.animation import FuncAnimation
-from datetime import datetime
-from sklearn.manifold import TSNE
-from mpl_toolkits.mplot3d import Axes3D
-from sklearn.decomposition import PCA
-from collections import namedtuple
-from ImageTransform import ImageTransform
-from AI.classification.model.ResNet import ResNet, BasicBlock, Bottleneck, Identity, CBAM
-from tqdm import tqdm
-
-from test import extract_feature_maps, config_model
-from utils.noise_generators import *
-
-# wandb
+from model.ResNet import ResNet
 import wandb
+from model.ResNet import CBAM
+from utils.noise_generator import *
+from utils.model import config_model
+from utils.feature import reduce_dimensions, extract_feature_maps
+
 device = "cuda"
-
-def reduce_dimensions(all_feature_maps, method='pca', compress=False):
-    print("[*] 1. reduce dimensions")
-    reduced_all_features = []
-    
-    for feature_maps in all_feature_maps:
-        combined_feature_maps = torch.cat(tuple(feature_maps), dim=0)
-        flattened_feature_maps = combined_feature_maps.view(
-            combined_feature_maps.size(0), -1).cpu().numpy()
-        
-        if method == 'pca':
-            reducer = PCA(n_components=2)
-        elif method == 'tsne':
-            reducer = TSNE(n_components=2, random_state=42, perplexity=10)
-        else:
-            raise ValueError('Wrong method name')
-
-        reduced_features = torch.from_numpy(reducer.fit_transform(flattened_feature_maps))
-        mean_feature = torch.mean(reduced_features, dim=0)
-        
-        # print('flattened :', flattened_feature_maps.shape)
-        # print('combined :', combined_feature_maps.shape)
-        # print('flattened T:', flattened_feature_maps.T.shape)
-        # print('reduced featuremap shape ', reduced_features.shape)
-        # print('mean featuremap shape ', mean_feature.shape)
-        # print()
-        
-        if compress:
-            reduced_all_features.append(mean_feature.unsqueeze(0))
-        else:
-            reduced_all_features.append(reduced_features)
-        
-        
-    return reduced_all_features
-
 
 def plot_feature_maps(reduced_all_features, label_names, noise_weight, method='pca', model_name=''):
     print("[*] 2. ploting feature maps")
@@ -94,6 +54,7 @@ def experience_image(image_path, model, noise_weight=0.1, compress=False, method
                 ]
     all_feature_maps = []
     all_distances = [0]
+    all_variances = [0]
     
     # noise 별로 featuremap 추출
     model.eval()
@@ -121,11 +82,13 @@ def experience_image(image_path, model, noise_weight=0.1, compress=False, method
     all_reduced_feature_maps = reduce_dimensions(all_feature_maps ,method, compress=compress)
     for reduced_feature_map in all_reduced_feature_maps[1:]:
         distance = torch.dist(all_reduced_feature_maps[0], reduced_feature_map)
+        variance = torch.var(reduced_feature_map)
         all_distances.append(distance)
+        all_variances.append(variance)
         
     plot_feature_maps(all_reduced_feature_maps, noise_names, noise_weight=noise_weight, method=method, model_name='')
     
-    return all_reduced_feature_maps, all_distances
+    return all_reduced_feature_maps, all_distances, all_variances
 
 
 if __name__ == "__main__":
